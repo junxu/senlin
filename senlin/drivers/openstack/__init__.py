@@ -14,6 +14,7 @@ from senlin.drivers.openstack import ceilometer_v2
 from senlin.drivers.openstack import heat_v1
 from senlin.drivers.openstack import keystone_v3
 from senlin.drivers.openstack import lbaas
+from senlin.drivers.openstack import lbaas_v1
 from senlin.drivers.openstack import neutron_v2
 from senlin.drivers.openstack import nova_v2
 from senlin.drivers.openstack import cinder_v2 
@@ -22,6 +23,7 @@ from senlin.drivers.openstack import cinder_v2
 compute = nova_v2.NovaClient
 identity = keystone_v3.KeystoneClient
 loadbalancing = lbaas.LoadBalancerDriver
+loadbalancing_v1 = lbaas_v1.LoadBalancerV1Driver
 network = neutron_v2.NeutronClient
 orchestration = heat_v1.HeatClient
 telemetry = ceilometer_v2.CeilometerClient

@@ -40,6 +40,7 @@ class SenlinDriver(object):
         # as the start point of using senlin generic driver.
         self.compute = backend.compute
         self.loadbalancing = backend.loadbalancing
+        self.loadbalancing_v1 = backend.loadbalancing_v1
         self.network = backend.network
         self.orchestration = backend.orchestration
         self.telemetry = backend.telemetry
