@@ -197,3 +197,36 @@ class NeutronClient(base.DriverBase):
         self.conn.network.delete_health_monitor(
             hm_id, ignore_missing=ignore_missing)
         return
+
+    def pool_v1_get(self, name_or_id):
+        pool = self.conn.network.find_pool_v1(name_or_id)
+        return pool
+
+    def pool_member_v1_get(self, name_or_id):
+        member = self.conn.network.find_pool_member_v1(name_or_id)
+        return member
+
+    def pool_member_v1_list(self):
+        members = [m for m in self.conn.network.pool_members_v1()]
+        return members
+
+    def pool_member_v1_create(self, pool_id, address, protocol_port,
+                           weight=None, admin_state_up=True):
+
+        kwargs = {
+            'pool_id': pool_id,
+            'address': address,
+            'protocol_port': protocol_port,
+            'admin_state_up': admin_state_up,
+        }
+
+        if weight is not None:
+            kwargs['weight'] = weight
+
+        res = self.conn.network.create_pool_member_v1(**kwargs)
+        return res
+
+    def pool_member_v1_delete(self, member_id, ignore_missing=True):
+        self.conn.network.delete_pool_member_v1(
+            member_id, ignore_missing=ignore_missing)
+        return
