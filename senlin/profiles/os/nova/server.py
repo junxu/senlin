@@ -54,11 +54,11 @@ class ServerProfile(base.Profile):
         BDM2_UUID, BDM2_SOURCE_TYPE, BDM2_DESTINATION_TYPE,
         BDM2_DISK_BUS, BDM2_DEVICE_NAME, BDM2_VOLUME_SIZE,
         BDM2_GUEST_FORMAT, BDM2_BOOT_INDEX, BDM2_DEVICE_TYPE,
-        BDM2_DELETE_ON_TERMINATION,
+        BDM2_DELETE_ON_TERMINATION, BDM2_VOLUME_TYPE,
     ) = (
         'uuid', 'source_type', 'destination_type', 'disk_bus',
         'device_name', 'volume_size', 'guest_format', 'boot_index',
-        'device_type', 'delete_on_termination',
+        'device_type', 'delete_on_termination', 'volume_type',
     )
 
     NETWORK_KEYS = (
@@ -150,6 +150,9 @@ class ServerProfile(base.Profile):
                     BDM2_DEVICE_TYPE: schema.String(
                         _('Type of the device(e.g. disk, cdrom, ...).'),
                     ),
+                    BDM2_VOLUME_TYPE: schema.String(
+                        _('volume type.'),
+                    ),
                     BDM2_DELETE_ON_TERMINATION: schema.Boolean(
                         _('Whether to delete the volume when the server '
                           'stops.'),
@@ -239,7 +242,9 @@ class ServerProfile(base.Profile):
 
         self._novaclient = None
         self._neutronclient = None
+        self._cinder = None
         self.server_id = None
+        self.volume_ids = []
 
     def nova(self, obj):
         '''Construct nova client based on object.
@@ -269,9 +274,72 @@ class ServerProfile(base.Profile):
         self._neutronclient = driver_base.SenlinDriver().network(params)
         return self._neutronclient
 
+    def cinder(self, obj):
+        '''Construct cinder client based on object.
+
+        :param obj: Object for which the client is created. It is expected to
+                    be None when retrieving an existing client. When creating
+                    a client, it contains the user and project to be used.
+        '''
+
+        if self._cinder is not None:
+            return self._cinder
+        params = self._build_conn_params(obj.user, obj.project)
+        self._cinder = driver_base.SenlinDriver().volume(params)
+        return self._cinder
+
     def do_validate(self, obj):
         '''Validate if the spec has provided valid info for server creation.'''
         return True
+
+    def delete_volumes(self, obj):
+        for vol_id in self.volume_ids:
+            try:
+                self.cinder(obj).volume_delete(vol_id)
+            except Exception as ex:
+                # ingore exception
+                Log.warning(_("Delete volume failed."))
+
+    def create_volume(self, obj, bdm):
+        attr = {}
+        attr['volume_type'] = bdm[self.BDM2_VOLUME_TYPE]
+        attr['size'] = bdm[self.BDM2_VOLUME_SIZE]        
+        source_type = bdm.get(self.BDM2_SOURCE_TYPE)
+        if source_type == "image":
+            attr['imageRef'] = bdm[self.BDM2_UUID]
+        elif source_type == "snapshot":
+            attr['snapshot_id'] = bdm[self.BDM2_UUID] 
+        LOG.info(_("Creating volume: %s" % attr)) 
+        
+        try:
+            vol = self.cinder(obj).volume_create(**attr)
+            self.volume_ids.append(vol.id)
+            self.cinder(obj).wait_for_volume_create(vol)
+            del bdm[self.BDM2_VOLUME_TYPE]
+            bdm[self.BDM2_UUID] = vol.id
+            bdm[self.BDM2_SOURCE_TYPE] = 'volume' 
+            bdm[self.BDM2_DESTINATION_TYPE] = 'volume' 
+        except Exception as ex:
+            LOG.error('Error: %s' % six.text_type(ex))
+            self.delete_volumes(obj)
+            raise ex 
+
+    def create_volumes(self, obj, kwargs):
+        
+        bdm_v2 = copy.deepcopy(self.properties[self.BLOCK_DEVICE_MAPPING_V2])
+        if bdm_v2 is None:
+            return
+
+        for bdm in bdm_v2:
+            for key in self.BDM2_KEYS:
+                if bdm[key] is None:
+                    del bdm[key]
+      
+        for bdm in bdm_v2:
+            if bdm.get(self.BDM2_VOLUME_TYPE) is not None:
+                succeed =  self.create_volume(obj, bdm)
+         
+        kwargs['block_device_mapping_v2'] = bdm_v2 
 
     def do_create(self, obj):
         '''Create a server using the given profile.'''
@@ -309,13 +377,7 @@ class ServerProfile(base.Profile):
             metadata['cluster'] = obj.cluster_id
         kwargs['metadata'] = metadata
 
-        block_device_mapping_v2 = self.properties[self.BLOCK_DEVICE_MAPPING_V2]
-        if block_device_mapping_v2 is not None:
-            for bdm in block_device_mapping_v2:
-                for key in self.BDM2_KEYS:
-                    if bdm[key] is None:
-                        del bdm[key]
-            kwargs['block_device_mapping_v2'] = block_device_mapping_v2
+        self.create_volumes(obj, kwargs)
 
         user_data = self.properties[self.USER_DATA]
         if user_data is not None:
@@ -340,8 +402,14 @@ class ServerProfile(base.Profile):
             kwargs['availability_zone'] = obj.data['placement']['zone']
 
         LOG.info('Creating server: %s' % kwargs)
-        server = self.nova(obj).server_create(**kwargs)
-        self.nova(obj).wait_for_server(server.id)
+        try:
+            server = self.nova(obj).server_create(**kwargs)
+            self.nova(obj).wait_for_server(server)
+        except Exception as ex:
+            # if create server failed, we need remove the volumes.
+            self.delete_volumes(obj)
+            raise ex
+
         self.server_id = server.id
 
         return server.id
