@@ -44,6 +44,17 @@ class ServerProfile(base.Profile):
         'user_data', 'scheduler_hints',
     )
 
+    VOLUME_KEYS = (
+        VOLUME_AVAILABILITY_ZONE, VOLUME_SCHEDULER_HINTS, VOLUME_METADATA,
+        VOLUME_SIZE, VOLUME_SOURCE_VOLID, VOLUME_DESCRIPTION, 
+        VOLUME_MULTIATTACH, VOLUME_SNAPSHOT_ID, VOLUME_NAME, 
+        VOLUME_IMAGEREF, VOLUME_VOLUME_TYPE,
+    ) = (
+        'availability_zone', 'scheduler_hints', 'metadata', 'size',
+        'source_volid', 'description', 'mulltiattach', 'snapshot_id',
+        'name', 'imageRef', 'volume_type',
+    )
+
     BDM_KEYS = (
         BDM_DEVICE_NAME, BDM_VOLUME_SIZE,
     ) = (
@@ -232,6 +243,53 @@ class ServerProfile(base.Profile):
         USER_DATA: schema.String(
             _('User data to be exposed by the metadata server.'),
         ),
+        VOLUMES: schema.List(
+            _('A list specifying the properties of volumes to be used '
+              'for this server.'),
+            schema=schema.Map(
+                _('A map specifying the properties of a block device to be '
+                  'used by the server.'),
+                schema={
+                    VOLUME_AVAILABILITY_ZONE: schema.String(
+                        _('The availability zone.'),
+                    ),
+                    VOLUME_SOURCE_VOLID: schema.String(
+                        _('To create a volume from an existing volume, specify the UUID of the volume.'),
+                    ),
+                    VOLUME_DESCRIPTION: schema.String(
+                        _('The volume description.'),
+                    ),
+                    VOLUME_MULTIATTACH: schema.Boolean(
+                        _('To enable this volume to attach to more than one server.'),
+                    ),
+                    VOLUME_SNAPHOT_ID: schema.String(
+                        _('To create a volume from an existing snapshot.'),
+                    ),
+                    BDM2_VOLUME_SIZE: schema.Integer(
+                        _('The size of the volume, in gibibytes (GiB).'),
+                    ),
+                    VOLUME_NAME: schema.String(
+                        _('The volume name.'),
+                    ),
+                    VOLUME_IMAGEREF: schema.String(
+                        _('The UUID of the image from which you want to create the volume.'),
+                    ),
+                    VOLUME_VOLUME_TYPE: schema.String(
+                        _('The volume type.'),
+                    ),
+                    VOLUME_DELETE_ON_TERMINATION: schema.Boolean(
+                        _('Whether to delete the volume when the server '
+                          'stops.'),
+                    ),
+                    SCHEDULER_HINTS: schema.Map(
+                        _('Scheduler hint.'),
+                    ),
+                    METADATA: schema.Map(
+                        _('One or more metadata key and value pairs that are associated with the volume.'),
+                    ),
+                }
+            ),
+        ),
     }
 
     def __init__(self, type_name, name, **kwargs):
@@ -239,6 +297,7 @@ class ServerProfile(base.Profile):
 
         self._novaclient = None
         self._neutronclient = None
+        self._cinder = None
         self.server_id = None
 
     def nova(self, obj):
@@ -269,9 +328,26 @@ class ServerProfile(base.Profile):
         self._neutronclient = driver_base.SenlinDriver().network(params)
         return self._neutronclient
 
+    def cinder(self, obj):
+        '''Construct cinder client based on object.
+
+        :param obj: Object for which the client is created. It is expected to
+                    be None when retrieving an existing client. When creating
+                    a client, it contains the user and project to be used.
+        '''
+
+        if self._cinder is not None:
+            return self._cinder_
+        params = self._build_conn_params(obj.user, obj.project)
+        self._cinder = driver_base.SenlinDriver().cinder(params)
+        return self._cinder_
+
     def do_validate(self, obj):
         '''Validate if the spec has provided valid info for server creation.'''
         return True
+
+    def do_create_volumes(self, obj, **kwargs):
+         
 
     def do_create(self, obj):
         '''Create a server using the given profile.'''
