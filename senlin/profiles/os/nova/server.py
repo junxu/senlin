@@ -404,7 +404,7 @@ class ServerProfile(base.Profile):
         LOG.info('Creating server: %s' % kwargs)
         try:
             server = self.nova(obj).server_create(**kwargs)
-            self.nova(obj).wait_for_server(server)
+            self.nova(obj).wait_for_server(server.id)
         except Exception as ex:
             # if create server failed, we need remove the volumes.
             self.delete_volumes(obj)
