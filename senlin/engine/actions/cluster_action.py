@@ -207,36 +207,36 @@ class ClusterAction(base.Action):
 
         profile_id = self.inputs.get('new_profile_id')
 
-        child_actions = []
-        for node in self.cluster.nodes:
-            kwargs = {
-                'name': 'node_update_%s' % node.id[:8],
-                'cause': base.CAUSE_DERIVED,
-                'inputs': {
-                    'new_profile_id': profile_id,
-                },
-                'user': self.context.user,
-                'project': self.context.project,
-                'domain': self.context.domain,
-            }
-            action = base.Action(node.id, 'NODE_UPDATE', **kwargs)
-            action.store(self.context)
-            child_actions.append(action)
+        #child_actions = []
+        #for node in self.cluster.nodes:
+        #    kwargs = {
+        #        'name': 'node_update_%s' % node.id[:8],
+        #        'cause': base.CAUSE_DERIVED,
+        #        'inputs': {
+        #            'new_profile_id': profile_id,
+        #        },
+        #        'user': self.context.user,
+        #        'project': self.context.project,
+        #        'domain': self.context.domain,
+        #    }
+        #    action = base.Action(node.id, 'NODE_UPDATE', **kwargs)
+        #    action.store(self.context)
+        #    child_actions.append(action)
 
-        if child_actions:
-            db_api.dependency_add(self.context,
-                                  [c.id for c in child_actions],
-                                  self.id)
-            for child in child_actions:
-                db_api.action_update(self.context, child.id,
-                                     {'status': child.READY})
-                dispatcher.start_action(action_id=child.id)
+        #if child_actions:
+        #    db_api.dependency_add(self.context,
+        #                          [c.id for c in child_actions],
+        #                          self.id)
+        #    for child in child_actions:
+        #        db_api.action_update(self.context, child.id,
+        #                             {'status': child.READY})
+        #        dispatcher.start_action(action_id=child.id)
 
-            result, new_reason = self._wait_for_dependents()
-            if result != self.RES_OK:
-                self.cluster.set_status(self.context, self.cluster.WARNING,
-                                        new_reason)
-                return result, new_reason
+        #    result, new_reason = self._wait_for_dependents()
+        #    if result != self.RES_OK:
+        #        self.cluster.set_status(self.context, self.cluster.WARNING,
+        #                                new_reason)
+        #        return result, new_reason
 
         reason = _('Cluster update completed.')
         self.cluster.set_status(self.context, self.cluster.ACTIVE, reason,
