@@ -12,6 +12,8 @@
 
 import base64
 import copy
+import string
+import random
 
 from oslo_log import log as logging
 from oslo_utils import encodeutils
@@ -304,6 +306,8 @@ class ServerProfile(base.Profile):
         attr = {}
         attr['volume_type'] = bdm[self.BDM2_VOLUME_TYPE]
         attr['size'] = bdm[self.BDM2_VOLUME_SIZE]        
+        attr['name'] = "_bcec_autoscaling_%s_%s" %(obj.cluster_id, 
+            ''.join(random.sample(string.digits, 8)))        
         source_type = bdm.get(self.BDM2_SOURCE_TYPE)
         if source_type == "image":
             attr['imageRef'] = bdm[self.BDM2_UUID]
