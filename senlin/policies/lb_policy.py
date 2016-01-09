@@ -37,11 +37,9 @@ class LoadBalancingPolicy(base.Policy):
     VERSION = '1.0'
 
     TARGET = [
-        ('AFTER', consts.CLUSTER_ADD_NODES),
-        ('AFTER', consts.CLUSTER_DEL_NODES),
-        ('AFTER', consts.CLUSTER_SCALE_OUT),
-        ('AFTER', consts.CLUSTER_SCALE_IN),
-        ('AFTER', consts.CLUSTER_RESIZE),
+        ('BEFORE', consts.NODE_DELETE),
+#        ('AFTER', consts.NODE_LEAVE),
+        ('AFTER', consts.NODE_CREATE),
     ]
 
     PROFILE_TYPE = [
@@ -268,6 +266,23 @@ class LoadBalancingPolicy(base.Policy):
 
         return True, reason
 
+    def pre_op(self, cluster_id, action):
+        db_cluster = db_api.cluster_get(action.context, cluster_id)
+        params = self._build_conn_params(db_cluster)
+        lb_driver = driver_base.SenlinDriver().loadbalancing_v1(params)
+
+        node = action.node
+        member_id = node.data.get('lb_member', None)
+        if member_id is None:
+            LOG.warning(_LW('Node %(n)s not found in lb pool %(p)s.'),
+                        {'n': node.id, 'p': self.pool})
+            return
+
+        LOG.info(_LW('Remove member for node %(n)s with port %(o)s in lb pool %(p)s.'),
+            {'n': node.id, 'o': self.protocol_port, 'p': self.pool})
+        res = lb_driver.member_remove(member_id)
+        return
+ 
     def post_op(self, cluster_id, action):
         """Routine to be called after an action has been executed.
 
@@ -279,60 +294,83 @@ class LoadBalancingPolicy(base.Policy):
         :param action: The action object that triggered this operation.
         :returns: Nothing.
         """
-        nodes_added = action.outputs.get('nodes_added', [])
-        nodes_removed = action.outputs.get('nodes_removed', [])
-        if ((len(nodes_added) == 0) and (len(nodes_removed) == 0)):
-            return
-
         db_cluster = db_api.cluster_get(action.context, cluster_id)
         params = self._build_conn_params(db_cluster)
-        lb_driver = driver_base.SenlinDriver().loadbalancing(params)
-        cp = cluster_policy.ClusterPolicy.load(action.context, cluster_id,
-                                               self.id)
-        policy_data = self._extract_policy_data(cp.data)
-        lb_id = policy_data['loadbalancer']
-        pool_id = policy_data['pool']
-        port = self.pool_spec.get(self.POOL_PROTOCOL_PORT)
-        subnet = self.pool_spec.get(self.POOL_SUBNET)
+        lb_driver = driver_base.SenlinDriver().loadbalancing_v1(params)
 
-        # Remove nodes that have been deleted from lb pool
-        # FIXME(someone): This logic is broken since we remove soft-delete
-        #                 support from DB. The correct logic should be that
-        #                 nodes are removed from load-balancer *before* nodes
-        #                 are deleted.
-        for node_id in nodes_removed:
-            node = node_mod.Node.load(action.context, node_id=node_id)
-            member_id = node.data.get('lb_member', None)
-            if member_id is None:
-                LOG.warning(_LW('Node %(n)s not found in lb pool %(p)s.'),
-                            {'n': node_id, 'p': pool_id})
-                continue
+        node = action.node
+        member_id = node.data.get('lb_member', None)
+        if member_id:
+            LOG.warning(_LW('Node %(n)s already in lb pool %(p)s.'),
+                {'n': node.id, 'p': self.pool})
+        else:
+            LOG.info(_LW('Create member for node %(n)s with port %(o)s in lb pool %(p)s.'),
+                {'n': node.id, 'o': self.protocol_port, 'p': self.pool})
+        member_id = lb_driver.member_add(node, self.pool, self.protocol_port)
+        if member_id is None:
+            action.data['status'] = base.CHECK_ERROR
+            action.data['reason'] = _('Failed in adding new node(s) '
+                                      'into lb pool.')
+            return
 
-            res = lb_driver.member_remove(lb_id, pool_id, member_id)
-            if res is not True:
-                action.data['status'] = base.CHECK_ERROR
-                action.data['reason'] = _('Failed in removing deleted '
-                                          'node(s) from lb pool.')
-                return
-
-        # Add new nodes to lb pool
-        for node_id in nodes_added:
-            node = node_mod.Node.load(action.context, node_id=node_id)
-            member_id = node.data.get('lb_member', None)
-            if member_id:
-                LOG.warning(_LW('Node %(n)s already in lb pool %(p)s.'),
-                            {'n': node_id, 'p': pool_id})
-                continue
-
-            member_id = lb_driver.member_add(node, lb_id, pool_id, port,
-                                             subnet)
-            if member_id is None:
-                action.data['status'] = base.CHECK_ERROR
-                action.data['reason'] = _('Failed in adding new node(s) '
-                                          'into lb pool.')
-                return
-
-            node.data.update({'lb_member': member_id})
-            node.store(action.context)
-
+        node.data.update({'lb_member': member_id})
+        node.store(action.context)
         return
+
+        #nodes_added = action.outputs.get('nodes_added', [])
+        #nodes_removed = action.outputs.get('nodes_removed', [])
+        #if ((len(nodes_added) == 0) and (len(nodes_removed) == 0)):
+        #    return
+
+        #db_cluster = db_api.cluster_get(action.context, cluster_id)
+        #params = self._build_conn_params(db_cluster)
+        #lb_driver = driver_base.SenlinDriver().loadbalancing(params)
+        #cp = cluster_policy.ClusterPolicy.load(action.context, cluster_id,
+        #                                       self.id)
+        #policy_data = self._extract_policy_data(cp.data)
+        #lb_id = policy_data['loadbalancer']
+        #pool_id = policy_data['pool']
+        #port = self.pool_spec.get(self.POOL_PROTOCOL_PORT)
+        #subnet = self.pool_spec.get(self.POOL_SUBNET)
+
+        ## Remove nodes that have been deleted from lb pool
+        ## FIXME(someone): This logic is broken since we remove soft-delete
+        ##                 support from DB. The correct logic should be that
+        ##                 nodes are removed from load-balancer *before* nodes
+        ##                 are deleted.
+        #for node_id in nodes_removed:
+        #    node = node_mod.Node.load(action.context, node_id=node_id)
+        #    member_id = node.data.get('lb_member', None)
+        #    if member_id is None:
+        #        LOG.warning(_LW('Node %(n)s not found in lb pool %(p)s.'),
+        #                    {'n': node_id, 'p': pool_id})
+        #        continue
+
+        #    res = lb_driver.member_remove(lb_id, pool_id, member_id)
+        #    if res is not True:
+        #        action.data['status'] = base.CHECK_ERROR
+        #        action.data['reason'] = _('Failed in removing deleted '
+        #                                  'node(s) from lb pool.')
+        #        return
+
+        ## Add new nodes to lb pool
+        #for node_id in nodes_added:
+        #    node = node_mod.Node.load(action.context, node_id=node_id)
+        #    member_id = node.data.get('lb_member', None)
+        #    if member_id:
+        #        LOG.warning(_LW('Node %(n)s already in lb pool %(p)s.'),
+        #                    {'n': node_id, 'p': pool_id})
+        #        continue
+
+        #    member_id = lb_driver.member_add(node, lb_id, pool_id, port,
+        #                                     subnet)
+        #    if member_id is None:
+        #        action.data['status'] = base.CHECK_ERROR
+        #        action.data['reason'] = _('Failed in adding new node(s) '
+        #                                  'into lb pool.')
+        #        return
+
+        #    node.data.update({'lb_member': member_id})
+        #    node.store(action.context)
+
+        #return
