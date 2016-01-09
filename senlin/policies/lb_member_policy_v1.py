@@ -85,7 +85,7 @@ class LBMemberPolicyV1(base.Policy):
             # add checking this node is not in this pool.
             # if a adress+port already in a pool, there wiil raise a excetiopn
             LOG.info(_LW('Create member for node %(n)s with port %(o)s in lb pool %(p)s.'),
-                {'n': node_id, 'o': self.protocol_port, 'p': self.pool})
+                {'n': node.id, 'o': self.protocol_port, 'p': self.pool})
             member_id = lb_driver.member_add(node, self.pool, self.protocol_port)
             # TODO(Anyone): Ingore member add fail
             if member_id is not None:
@@ -101,7 +101,7 @@ class LBMemberPolicyV1(base.Policy):
                 member_id = node.data.pop('lb_member')
                 node.store(oslo_context.get_current())
                 LOG.info(_LW('Remove member for node %(n)s with port %(o)s in lb pool %(p)s.'),
-                   {'n': node_id, 'o': self.protocol_port, 'p': self.pool})
+                   {'n': node.id, 'o': self.protocol_port, 'p': self.pool})
                 lb_driver.member_remove(member_id) 
 
     def attach(self, cluster):
