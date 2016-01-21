@@ -478,13 +478,13 @@ class ClusterAction(base.Action):
             if grace_period is not None:
                 self._wait_before_deletion(grace_period)
             result, reason = self._delete_nodes(candidates)
-            if result != self.RES_OK:
-                return result, reason
         # Create new nodes if desired_capacity increased
         else:
             result, reason = self._create_nodes(count)
-            if result != self.RES_OK:
-                return result, reason
+
+        if result != self.RES_OK:
+            self.cluster.set_status(self.context, self.cluster.WARNING, reason)
+            return result, reason
 
         reason = _('Cluster resize succeeded.')
         kwargs = {'desired_capacity': desired}
