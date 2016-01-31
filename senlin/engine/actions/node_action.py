@@ -63,13 +63,13 @@ class NodeAction(base.Action):
 
             if result != '':
                 return self.RES_ERROR, result
+            # Update cluster desired_capacity because node is already in db
+            cluster.desired_capacity += 1
+            cluster.store(self.context)
 
         res = self.node.do_create(self.context)
         if res:
             if self.node.cluster_id and self.cause == base.CAUSE_RPC:
-                # Update cluster desired_capacity if node creation succeeded
-                cluster.desired_capacity += 1
-                cluster.store(self.context)
                 cluster.add_node(self.node)
             return self.RES_OK, _('Node created successfully.')
         else:

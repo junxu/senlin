@@ -409,9 +409,11 @@ class ServerProfile(base.Profile):
         try:
             server = self.nova(obj).server_create(**kwargs)
             self.nova(obj).wait_for_server(server.id)
-        except Exception as ex:
+        except exception.InternalError as ex:
             # if create server failed, we need remove the volumes.
             self.delete_volumes(obj)
+            if server:
+                ex.kwargs['resource_id'] = server.id
             raise ex
 
         self.server_id = server.id
