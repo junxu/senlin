@@ -460,6 +460,9 @@ class ClusterAction(base.Action):
         if count == 0:
             result, reason = scaleutils.parse_resize_params(self, self.cluster)
             if result != self.RES_OK:
+                status_reason = _('Cluster resizing failed: %s') % reason
+                self.cluster.set_status(self.context, self.cluster.ACTIVE,
+                                        status_reason)
                 return result, reason
             count, desired, candidates = self._get_action_data(current_size)
         elif 'deletion' in self.data:
@@ -517,6 +520,9 @@ class ClusterAction(base.Action):
 
         if count <= 0:
             reason = _('Invalid count (%s) for scaling out.') % count
+            status_reason = _('Cluster scaling failed: %s') % reason
+            self.cluster.set_status(self.context, self.cluster.ACTIVE,
+                                    status_reason)
             return self.RES_ERROR, reason
 
         # check provided params against current properties
@@ -565,6 +571,9 @@ class ClusterAction(base.Action):
 
         if count <= 0:
             reason = _('Invalid count (%s) for scaling in.') % count
+            status_reason = _('Cluster scaling failed: %s') % reason
+            self.cluster.set_status(self.context, self.cluster.ACTIVE,
+                                    status_reason)
             return self.RES_ERROR, reason
 
         # check provided params against current properties
@@ -580,6 +589,9 @@ class ClusterAction(base.Action):
         result = scaleutils.check_size_params(self.cluster, new_size,
                                               None, None, False)
         if result != '':
+            status_reason = _('Cluster scaling failed: %s') % result
+            self.cluster.set_status(self.context, self.cluster.ACTIVE,
+                                    status_reason)
             return self.RES_ERROR, result
 
         # Choose victims randomly
