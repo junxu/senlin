@@ -105,7 +105,8 @@ def query_by_short_id(context, model, short_id, project_safe=False):
     q = model_query(context, model)
     q = q.filter(model.id.like('%s%%' % short_id))
 
-    if project_safe:
+    #if project_safe:
+    if project_safe and not context.is_admin:
         q = q.filter_by(project=context.project)
 
     if q.count() == 1:
@@ -121,7 +122,8 @@ def query_by_name(context, model, name, project_safe=False):
     q = model_query(context, model)
     q = q.filter_by(name=name)
 
-    if project_safe:
+    #if project_safe:
+    if project_safe and not context.is_admin:
         q = q.filter_by(project=context.project)
 
     if q.count() == 1:
@@ -151,7 +153,8 @@ def cluster_get(context, cluster_id, project_safe=True):
     if cluster is None:
         return None
 
-    if project_safe and (cluster is not None):
+    #if project_safe and (cluster is not None):
+    if project_safe and (cluster is not None) and (not context.is_admin):
         if context.project != cluster.project:
             return None
     return cluster
@@ -173,7 +176,8 @@ def _query_cluster_get_all(context, project_safe=True, show_nested=False):
     if not show_nested:
         query = query.filter_by(parent=None)
 
-    if project_safe:
+    #if project_safe:
+    if project_safe and not context.is_admin:
         query = query.filter_by(project=context.project)
     return query
 
@@ -270,7 +274,8 @@ def node_get(context, node_id, project_safe=True):
     if not node:
         return None
 
-    if project_safe and context.project != node.project:
+    #if project_safe and context.project != node.project:
+    if project_safe and (context.project != node.project) and (not context.is_admin):
         return None
 
     return node
@@ -291,7 +296,8 @@ def _query_node_get_all(context, project_safe=True, cluster_id=None):
     if cluster_id:
         query = query.filter_by(cluster_id=cluster_id)
 
-    if project_safe:
+    #if project_safe:
+    if project_safe and not context.is_admin:
         query = query.filter_by(project=context.project)
 
     return query
@@ -324,7 +330,8 @@ def node_get_all(context, cluster_id=None, limit=None, marker=None,
 def node_get_all_by_cluster(context, cluster_id, project_safe=True):
     query = model_query(context, models.Node).filter_by(cluster_id=cluster_id)
 
-    if project_safe:
+    #if project_safe:
+    if project_safe and not context.is_admin:
         query = query.filter_by(project=context.project)
 
     nodes = query.all()
@@ -336,7 +343,8 @@ def node_get_by_name_and_cluster(context, node_name, cluster_id,
                                  project_safe=True):
     query = model_query(context, models.Node).filter_by(name=node_name)
 
-    if project_safe:
+    #if project_safe:
+    if project_safe and not context.is_admin:
         query = query.filter_by(project=context.project)
 
     node = query.filter_by(cluster_id=cluster_id).first()
