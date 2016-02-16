@@ -531,6 +531,7 @@ class EngineService(service.Service):
             'user': context.user,
             'project': context.project,
             'domain': context.domain,
+            'is_admin': context.is_admin,
             'name': 'cluster_create_%s' % cluster.id[:8],
             'cause': action_mod.CAUSE_RPC
         }
@@ -614,6 +615,7 @@ class EngineService(service.Service):
             'user': context.user,
             'project': context.project,
             'domain': context.domain,
+            'is_admin': context.is_admin,
             'name': 'cluster_update_%s' % cluster.id[:8],
             'cause': action_mod.CAUSE_RPC,
             'inputs': inputs
@@ -692,6 +694,7 @@ class EngineService(service.Service):
             'user': context.user,
             'project': context.project,
             'domain': context.domain,
+            'is_admin': context.is_admin,
             'name': action_name,
             'cause': action_mod.CAUSE_RPC,
             'inputs': {'nodes': found}
@@ -741,6 +744,7 @@ class EngineService(service.Service):
             'user': context.user,
             'project': context.project,
             'domain': context.domain,
+            'is_admin': context.is_admin,
             'name': action_name,
             'cause': action_mod.CAUSE_RPC,
             'inputs': {
@@ -847,6 +851,7 @@ class EngineService(service.Service):
             'user': context.user,
             'project': context.project,
             'domain': context.domain,
+            'is_admin': context.is_admin,
             'name': action_name,
             'cause': action_mod.CAUSE_RPC,
             'inputs': inputs
@@ -882,6 +887,7 @@ class EngineService(service.Service):
             'user': context.user,
             'project': context.project,
             'domain': context.domain,
+            'is_admin': context.is_admin,
             'name': action_name,
             'cause': action_mod.CAUSE_RPC,
             'inputs': inputs
@@ -918,6 +924,7 @@ class EngineService(service.Service):
             'user': context.user,
             'project': context.project,
             'domain': context.domain,
+            'is_admin': context.is_admin,
             'name': action_name,
             'cause': action_mod.CAUSE_RPC,
             'inputs': inputs
@@ -951,6 +958,7 @@ class EngineService(service.Service):
             'user': context.user,
             'project': context.project,
             'domain': context.domain,
+            'is_admin': context.is_admin,
             'name': action_name,
             'cause': action_mod.CAUSE_RPC
         }
@@ -1055,6 +1063,7 @@ class EngineService(service.Service):
             'user': context.user,
             'project': context.project,
             'domain': context.domain,
+            'is_admin': context.is_admin,
             'name': 'node_create_%s' % node.id[:8],
             'cause': action_mod.CAUSE_RPC
         }
@@ -1120,6 +1129,7 @@ class EngineService(service.Service):
             'user': context.user,
             'project': context.project,
             'domain': context.domain,
+            'is_admin': context.is_admin,
             'name': 'node_update_%s' % node.id[:8],
             'cause': action_mod.CAUSE_RPC,
             'inputs': inputs
@@ -1142,6 +1152,7 @@ class EngineService(service.Service):
             'user': context.user,
             'project': context.project,
             'domain': context.domain,
+            'is_admin': context.is_admin,
             'name': 'node_delete_%s' % db_node.id[:8],
             'cause': action_mod.CAUSE_RPC
         }
@@ -1181,6 +1192,7 @@ class EngineService(service.Service):
             'user': context.user,
             'project': context.project,
             'domain': context.domain,
+            'is_admin': context.is_admin,
             'name': 'node_join_%s' % db_node.id[:8],
             'cause': action_mod.CAUSE_RPC,
             'inputs': {'cluster_id': db_cluster.id}
@@ -1207,6 +1219,7 @@ class EngineService(service.Service):
             'user': context.user,
             'project': context.project,
             'domain': context.domain,
+            'is_admin': context.is_admin,
             'name': 'node_leave_%s' % db_node.id[:8],
             'cause': action_mod.CAUSE_RPC
         }
@@ -1277,6 +1290,7 @@ class EngineService(service.Service):
             'user': context.user,
             'project': context.project,
             'domain': context.domain,
+            'is_admin': context.is_admin,
             'name': 'attach_policy_%s' % db_cluster.id[:8],
             'cause': action_mod.CAUSE_RPC,
             'inputs': inputs
@@ -1321,6 +1335,7 @@ class EngineService(service.Service):
             'user': context.user,
             'project': context.project,
             'domain': context.domain,
+            'is_admin': context.is_admin,
             'name': action_name,
             'cause': action_mod.CAUSE_RPC,
             'inputs': {'policy_id': db_policy.id}
@@ -1374,6 +1389,7 @@ class EngineService(service.Service):
             'user': context.user,
             'project': context.project,
             'domain': context.domain,
+            'is_admin': context.is_admin,
             'name': action_name,
             'cause': action_mod.CAUSE_RPC,
             'inputs': inputs
@@ -1431,6 +1447,7 @@ class EngineService(service.Service):
             'user': context.user,
             'project': context.project,
             'domain': context.domain,
+            'is_admin': context.is_admin,
             'name': name,
             'inputs': inputs
         }
@@ -1607,6 +1624,7 @@ class EngineService(service.Service):
             'inputs': data,
             'user': context.user,
             'project': context.project,
+            'is_admin': context.is_admin,
             'domain': context.domain,
         }
         action = action_mod.Action(cluster.id, receiver.action, **kwargs)

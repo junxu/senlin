@@ -100,7 +100,8 @@ class Action(object):
                 'user': kwargs.get('user'),
                 'project': kwargs.get('project'),
                 'domain': kwargs.get('domain'),
-                'is_admin': False
+                #'is_admin': False
+                'is_admin': kwargs.get('is_admin', False) 
             }
             self.context = req_context.RequestContext.from_dict(params)
         else:

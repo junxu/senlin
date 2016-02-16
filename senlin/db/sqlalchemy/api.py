@@ -101,7 +101,7 @@ def _paginate_query(context, query, model, limit=None, marker=None,
 
 
 # TODO(Yanyan Hu): Set default value of project_safe to True
-def query_by_short_id(context, model, short_id, project_safe=False):
+def query_by_short_id(context, model, short_id, project_safe=True):
     q = model_query(context, model)
     q = q.filter(model.id.like('%s%%' % short_id))
 
@@ -118,7 +118,7 @@ def query_by_short_id(context, model, short_id, project_safe=False):
 
 
 # TODO(Yanyan Hu): Set default value of project_safe to True
-def query_by_name(context, model, name, project_safe=False):
+def query_by_name(context, model, name, project_safe=True):
     q = model_query(context, model)
     q = q.filter_by(name=name)
 
@@ -175,9 +175,12 @@ def _query_cluster_get_all(context, project_safe=True, show_nested=False):
 
     if not show_nested:
         query = query.filter_by(parent=None)
+    
+    # (xujun 2016-2-16) non admin user can't list all projects
+    if not context.is_admin:
+        project_safe = True
 
-    #if project_safe:
-    if project_safe and not context.is_admin:
+    if project_safe:
         query = query.filter_by(project=context.project)
     return query
 
@@ -296,8 +299,11 @@ def _query_node_get_all(context, project_safe=True, cluster_id=None):
     if cluster_id:
         query = query.filter_by(cluster_id=cluster_id)
 
-    #if project_safe:
-    if project_safe and not context.is_admin:
+    # (xujun) non admin user can't list all projects
+    if not context.is_admin:
+        project_safe = True
+
+    if project_safe:
         query = query.filter_by(project=context.project)
 
     return query
@@ -556,8 +562,15 @@ def policy_get(context, policy_id, project_safe=True):
     policy = model_query(context, models.Policy)
     policy = policy.filter_by(id=policy_id).first()
 
-    if policy is not None:
-        if project_safe and context.project != policy.project:
+    #if policy is not None:
+    #    if project_safe and context.project != policy.project:
+    #        return None
+   
+    #(xujun) 2016-2-16 
+    if policy is None:
+        return None
+    if project_safe and (not context.is_admin):
+        if context.project != policy.project:
             return None
 
     return policy
@@ -576,6 +589,10 @@ def policy_get_by_short_id(context, short_id, project_safe=True):
 def policy_get_all(context, limit=None, marker=None, sort_keys=None,
                    sort_dir=None, filters=None, project_safe=True):
     query = model_query(context, models.Policy)
+
+    # (xujun 2016-2-16) non admin user can't list all projects
+    if not context.is_admin:
+        project_safe = True
 
     if project_safe:
         query = query.filter_by(project=context.project)
@@ -708,7 +725,14 @@ def profile_get(context, profile_id, project_safe=True):
     query = model_query(context, models.Profile)
     profile = query.filter_by(id=profile_id).first()
 
-    if project_safe and profile is not None:
+    #if project_safe and profile is not None:
+    #    if context.project != profile.project:
+    #        return None
+
+    #(xujuni 2016-02-16)
+    if profile is None:
+        return None
+    if project_safe and (not context.is_admin):
         if context.project != profile.project:
             return None
 
@@ -728,6 +752,10 @@ def profile_get_by_short_id(context, short_id, project_safe=True):
 def profile_get_all(context, limit=None, marker=None, sort_keys=None,
                     sort_dir=None, filters=None, project_safe=True):
     query = model_query(context, models.Profile)
+
+    # (xujun 2016-2-16) non admin user can't list all projects
+    if not context.is_admin:
+        project_safe = True
 
     if project_safe:
         query = query.filter_by(project=context.project)
@@ -849,8 +877,15 @@ def event_create(context, values):
 
 def event_get(context, event_id, project_safe=True):
     event = model_query(context, models.Event).get(event_id)
-    if project_safe and event is not None:
-        if event.project != context.project:
+    #if project_safe and event is not None:
+    #    if event.project != context.project:
+    #        return None
+
+    #(xujuni 2016-02-16)
+    if event is None:
+        return None
+    if project_safe and (not context.is_admin):
+        if context.project != event.project:
             return None
 
     return event
@@ -887,6 +922,11 @@ def _event_filter_paginate_query(context, query, filters=None,
 def event_get_all(context, limit=None, marker=None, sort_keys=None,
                   sort_dir=None, filters=None, project_safe=True):
     query = model_query(context, models.Event)
+
+    # (xujun 2016-2-16) non admin user can't list all projects
+    if not context.is_admin:
+        project_safe = True
+
     if project_safe:
         query = query.filter_by(project=context.project)
 
@@ -898,6 +938,10 @@ def event_get_all(context, limit=None, marker=None, sort_keys=None,
 
 def event_count_by_cluster(context, cluster_id, project_safe=True):
     query = model_query(context, models.Event)
+
+    # (xujun 2016-2-16) non admin user can't list all projects
+    if not context.is_admin:
+        project_safe = True
 
     if project_safe:
         query = query.filter_by(project=context.project)
@@ -911,6 +955,10 @@ def event_get_all_by_cluster(context, cluster_id, limit=None, marker=None,
                              project_safe=True):
     query = model_query(context, models.Event).\
         filter_by(cluster_id=cluster_id)
+
+    # (xujun 2016-2-16) non admin user can't list all projects
+    if not context.is_admin:
+        project_safe = True
 
     if project_safe:
         query = query.filter_by(project=context.project)
@@ -1234,15 +1282,24 @@ def receiver_get(context, receiver_id, project_safe=True):
     if not receiver:
         return None
 
-    if project_safe and context.project != receiver.project:
-        return None
+    #if project_safe and context.project != receiver.project:
+    #    return None
 
+    #(xujuni 2016-02-16)
+    if project_safe and (not context.is_admin):
+        if context.project != receiver.project:
+            return None
     return receiver
 
 
 def receiver_get_all(context, limit=None, marker=None, filters=None,
                      sort_keys=None, sort_dir=None, project_safe=True):
     query = model_query(context, models.Receiver)
+
+    # (xujun 2016-2-16) non admin user can't list all projects
+    if not context.is_admin:
+        project_safe = True
+
     if project_safe:
         query = query.filter_by(project=context.project)
 
